@@ -1,0 +1,34 @@
+name: clang
+
+on:
+  workflow_dispatch:
+    inputs:
+      llvm_version:
+        description: "Full LLVM version (XX.Y.Z)"
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log into GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./clang
+          push: true
+          build-args: LLVM_VERSION=${{ inputs.llvm_version }}
+          tags: ghcr.io/k3dw/clang:${{ inputs.llvm_version }}
