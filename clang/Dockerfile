@@ -34,4 +34,5 @@ RUN cmake -S /llvm-project/llvm -B /llvm-build \
   && cmake --install /llvm-build \
   && rm -rf /llvm-project /llvm-build
 
-RUN ldconfig
+RUN find /usr/local/lib -maxdepth 2 -name "libc++.so.1" -exec dirname {} \; > /etc/ld.so.conf.d/llvm.conf \
+  && ldconfig
