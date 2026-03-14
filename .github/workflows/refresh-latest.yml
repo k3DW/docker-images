@@ -1,0 +1,65 @@
+name: Refresh latest tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: "Image name (e.g. clang)"
+        required: true
+      prefix:
+        description: "Version prefix to match (e.g. 22)"
+        required: true
+  workflow_call:
+    inputs:
+      image_name:
+        type: string
+        required: true
+      prefix:
+        type: string
+        required: true
+
+jobs:
+  tag-latest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find and tag latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGE="${{ inputs.image_name }}"
+          PREFIX="${{ inputs.prefix }}"
+
+          VERSIONS=$(gh api \
+            --paginate \
+            /user/packages/container/${IMAGE}/versions \
+            --jq '.[].metadata.container.tags[]' 2>/dev/null || echo "")
+
+          HIGHEST=$(echo "$VERSIONS" \
+            | grep -E "^${PREFIX}" \
+            | grep -v -E "^${PREFIX}$" \
+            | sort -V \
+            | tail -n1)
+
+          if [ -z "$HIGHEST" ]; then
+            echo "No versions found matching prefix '${PREFIX}'"
+            exit 1
+          fi
+
+          echo "Highest version matching ${PREFIX} is ${HIGHEST}"
+          echo "Tagging ghcr.io/k3dw/${IMAGE}:${HIGHEST} as ${PREFIX}"
+
+          docker pull ghcr.io/k3dw/${IMAGE}:${HIGHEST}
+          docker tag  ghcr.io/k3dw/${IMAGE}:${HIGHEST} \
+                      ghcr.io/k3dw/${IMAGE}:${PREFIX}
+          docker push ghcr.io/k3dw/${IMAGE}:${PREFIX}

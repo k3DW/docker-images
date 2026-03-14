@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -32,3 +32,14 @@ jobs:
           push: true
           build-args: LLVM_VERSION=${{ inputs.llvm_version }}
           tags: ghcr.io/k3dw/clang:${{ inputs.llvm_version }}
+
+      - name: Get major version
+        id: get_major
+        run: |
+          echo "major=$(echo '${{ inputs.llvm_version }}' | cut -d. -f1)" >> $GITHUB_OUTPUT
+
+      - name: Tag latest major
+        uses: ./.github/workflows/tag-latest.yml
+        with:
+          image_name: clang
+          prefix: ${{ steps.get_major.outputs.major }}
