@@ -13,6 +13,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      major: ${{ steps.get_major.outputs.major }}
 
     steps:
       - name: Checkout
@@ -38,8 +40,12 @@ jobs:
         run: |
           echo "major=$(echo '${{ inputs.llvm_version }}' | cut -d. -f1)" >> $GITHUB_OUTPUT
 
-      - name: Tag latest major
-        uses: ./.github/workflows/tag-latest.yml
-        with:
-          image_name: clang
-          prefix: ${{ steps.get_major.outputs.major }}
+  tag:
+    needs: build
+    uses: ./.github/workflows/refresh-latest.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      image_name: clang
+      prefix: ${{ needs.build.outputs.major }}
