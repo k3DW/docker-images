@@ -1,0 +1,55 @@
+name: gcc
+
+on:
+  workflow_dispatch:
+    inputs:
+      gcc_version:
+        description: "Full GCC version (XX.Y)"
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log into GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Normalize GCC version for git tag
+        id: normalize
+        run: |
+          version="${{ inputs.gcc_version }}"
+          if [[ "$version" =~ ^[0-9]+\.[0-9]+$ ]]; then
+            echo "git_version=${version}.0" >> $GITHUB_OUTPUT
+          else
+            echo "git_version=${version}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./gcc
+          push: true
+          build-args: GCC_VERSION=${{ steps.normalize.outputs.git_version }}
+          tags: ghcr.io/k3dw/gcc:${{ inputs.gcc_version }}
+
+      - name: Get major version
+        id: get_major
+        run: |
+          echo "major=$(echo '${{ inputs.gcc_version }}' | cut -d. -f1)" >> $GITHUB_OUTPUT
+
+      - name: Tag latest major
+        uses: ./.github/workflows/tag-latest.yml
+        with:
+          image_name: gcc
+          prefix: ${{ steps.get_major.outputs.major }}
