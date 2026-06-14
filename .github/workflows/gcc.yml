@@ -32,9 +32,9 @@ jobs:
         run: |
           version="${{ inputs.gcc_version }}"
           if [[ "$version" =~ ^[0-9]+\.[0-9]+$ ]]; then
-            echo "git_version=${version}.0" >> $GITHUB_OUTPUT
+            echo "gcc_version=${version}.0" >> $GITHUB_OUTPUT
           else
-            echo "git_version=${version}" >> $GITHUB_OUTPUT
+            echo "gcc_version=${version}" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push
@@ -42,7 +42,7 @@ jobs:
         with:
           context: ./gcc
           push: true
-          build-args: GCC_VERSION=${{ steps.normalize.outputs.git_version }}
+          build-args: GCC_VERSION=${{ steps.normalize.outputs.gcc_version }}
           tags: ghcr.io/k3dw/gcc:${{ inputs.gcc_version }}
 
       - name: Get major version
