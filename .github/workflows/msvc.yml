@@ -1,0 +1,58 @@
+# Copyright 2026 Braden Ganetsky
+# Distributed under the Boost Software License, Version 1.0.
+# https://www.boost.org/LICENSE_1_0.txt
+
+name: msvc
+
+on:
+  workflow_dispatch:
+    inputs:
+      vs_version:
+        description: "Visual Studio version (XX.YY[.ZZ])"
+        required: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Log into GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get VS version
+        id: get_vs_version
+        run: |
+          Invoke-Webrequest `
+            -Uri "https://raw.githubusercontent.com/k3DW/setup-msvc/3d35adb1d581fe54cf455339db2d5b0d38ecff1e/get_install_args.py" `
+            -OutFile .\get_install_args.py
+          try {
+            $scriptOutput = python .\get_install_args.py $inputVersion 2>&1
+            $vs_version = $scriptOutput[0]
+          } finally {
+            Remove-Item .\get_install_args.exe
+          }
+          if ($LASTEXITCODE -eq 0) {
+            Add-Content $env:GITHUB_OUTPUT "vs_version=$vs_version"
+          } else {
+            Write-Error "get_install_args.py failed with exit code: $LASTEXITCODE"
+            Write-Error $scriptOutput
+            exit $LASTEXITCODE
+          }
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./msvc
+          push: true
+          build-args: VS_VERSION=${{ steps.get_vs_version.outputs.vs_version }}
+          tags: ghcr.io/k3dw/msvc:${{ steps.get_vs_version.outputs.vs_version }}
