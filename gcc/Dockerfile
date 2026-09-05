@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     libmpc-dev \
     zlib1g-dev \
     flex \
+    gdb \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth 1 --branch releases/gcc-${GCC_VERSION} \
